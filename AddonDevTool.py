@@ -1,10 +1,10 @@
 bl_info = {
     "name": "Addon Development Tool",
-    "description": "Removes redundancy and repetition in the testing of Blender addons",
+    "description": "Removes redundancy and repetition in the creating and testing of Blender addons",
     "author": "Nathan Craddock",
     "version": (0, 1),
     "blender": (2, 75, 0),
-    "location": "Defaults to Properties shelf of the text editor",
+    "location": "Properties shelf of the text editor",
     "warning": "",
     "support": "COMMUNITY",
     "category": "Text Editor"
@@ -155,8 +155,8 @@ class AddonDevelopmentProjectPanel(Panel):
     bl_region_type = 'UI'
     
     def draw(self, context):
-        list = context.scene.project_list
-        index = context.scene.project_list_index
+        project_list = context.scene.project_list
+        list_index = context.scene.project_list_index
         
         # Make sure the files and xml are always updated
         update_file_list(context)
@@ -171,33 +171,27 @@ class AddonDevelopmentProjectPanel(Panel):
         row = layout.row()
         row.template_list("AddonProjectUIList", "", context.scene, "project_list", context.scene, "project_list_index", rows=5)
         
-        split = layout.split()
         
-        col = split.column()
-        col.operator('addon_dev_tool.new_addon')
-        #col.operator('addon_dev_tool.import_addon')
-        col.separator()
-        
-        col.operator('addon_dev_tool.new_script')
-        #col.operator('addon_dev_tool.import_script')
-        
-        
-        col = split.column()
-        col.operator('addon_dev_tool.delete_project')
+        row = layout.row()
+        row.operator('addon_dev_tool.new_addon')
+        row.operator('addon_dev_tool.new_script')
+        row.operator('addon_dev_tool.delete_project')
         
         layout.separator()
-        
-        project_list = context.scene.project_list
-        list_index = context.scene.project_list_index
         
         if list_index >= 0 and len(project_list) > 0:
             item = project_list[list_index]
             
             if not item.location == "" and os.path.exists(bpy.path.abspath(item.location)):
-        
-                row = layout.row()
-                row.operator('addon_dev_tool.open_files')
-                row.operator('addon_dev_tool.close_files')
+                
+                split = layout.split()
+                col = split.column()
+                col.operator('addon_dev_tool.open_files')
+                col = split.column()
+                col.operator('addon_dev_tool.close_files')
+                col.operator('addon_dev_tool.close_all_files')
+                
+                layout.separator()
                 
                 row = layout.row()
                 if item.is_addon:
@@ -283,21 +277,6 @@ class AddonProjectUIList(UIList):
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
             layout.label("", icon=text_icon)
-            
-
-class AddHelper(Operator, ImportHelper):
-    use_filter_folder = True
-    
-    def execute(self, context):
-        sce = context.scene
-        
-        sce.project_list.add()
-        sce.project_list_index = len(sce.project_list) - 1
-        
-        path = self.properties.filepath
-        sce.project_list[sce.project_list_index].location = path
-        
-        return {'FINISHED'}
 
 
 class AddAddon(Operator):
@@ -314,12 +293,6 @@ class AddAddon(Operator):
         return {'FINISHED'}
     
     
-class ImportAddon(AddHelper):
-    bl_label = "Import Addon"
-    bl_idname = "addon_dev_tool.import_addon"
-    bl_description = "Import an existing addon"
-    
-    
 class AddScript(Operator):
     bl_label = "New Script"
     bl_idname = "addon_dev_tool.new_script"
@@ -332,12 +305,6 @@ class AddScript(Operator):
         context.scene.project_list[context.scene.project_list_index].is_addon = False
         
         return {'FINISHED'}
-    
-    
-class ImportScript(AddHelper):
-    bl_label = "Import Script"
-    bl_idname = "addon_dev_tool.import_script"
-    bl_description = "Import an existing script"
     
 
 class RemoveItem(Operator):
@@ -415,18 +382,7 @@ class ADTInstallAddon(Operator):
         # If it is a multi-file addon get the folder
         if os.path.isdir(path):
             if path.endswith(os.sep):               
-                addon_name = os.path.basename(path.rstrip(os.sep))
-                addon_path = temp + os.sep + "addons" + os.sep + project.name
-                
-#                if os.path.exists(addon_path):
-#                    #os.remove(addon_path)
-#                    #os.makedirs(addon_path)
-#                    pass
-#                else:
-#                    os.makedirs(addon_path)
-#                
-#                for file in project.project_files:
-#                    shutil.copyfile(path + file, addon_path)
+                addon_name = os.path.basename(path.rstrip(os.sep))         
 
                 zip = zipfile.ZipFile(temp + os.sep + addon_name + ".zip", 'w')
                 
@@ -437,11 +393,11 @@ class ADTInstallAddon(Operator):
                 
                 bpy.ops.wm.addon_install(overwrite=True, filepath=temp + os.sep + addon_name + ".zip")
                 
-                #bpy.ops.wm.addon_enable(module=project.name)
+                #bpy.ops.wm.addon_enable(module=addon_name)
                 print("NAME", addon_name)
                 
                 #remove the temporary zip file
-                #os.remove(temp + os.sep + addon_name + ".zip")
+                os.remove(temp + os.sep + addon_name + ".zip")
                 
         # Otherwise, get the name of the file
         elif os.path.isfile(path):
@@ -515,7 +471,3 @@ def unregister():
     
     del bpy.types.Scene.project_list
     del bpy.types.Scene.project_list_index
-    
-    
-if __name__ == "__main__":
-    register()
