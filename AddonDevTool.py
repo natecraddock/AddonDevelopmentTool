@@ -28,19 +28,13 @@ def xml_new_project(root, p):
     # Take the input project and then create the tree   
     list = root
     
-    project = ET.SubElement(list, 'project', name=p.name)
-    
-    loc = ET.SubElement(project, 'location').text = p.location
-    
     if p.is_addon:
-        addon = ET.SubElement(project, 'is_addon').text = "True"
+        project = ET.SubElement(list, 'project', name=p.name, loc=p.location, addon="True")
     else:
-        addon = ET.SubElement(project, 'is_addon').text = "False"
-    
-    files = ET.SubElement(project, 'project_files')
+        project = ET.SubElement(list, 'project', name=p.name, loc=p.location, addon="False")
     
     for file in p.project_files:
-        ET.SubElement(files, 'file').text = file
+        ET.SubElement(project, 'file').text = file
     
     return list
     
@@ -50,18 +44,43 @@ def update_xml(context):
     # Then update the tree to include all current projects
     #update the current projects to include all from the tree
     # Makes sure that no matter what the addon will have all the projects you have made
-    
-    NAME = "ADTProjects.xml"
-    
+        
     scripts_path = bpy.utils.script_path_user()
-    projects_file = scripts_path + os.sep + NAME
-    projects = context.scene.project_list
+    projects_file = scripts_path + os.sep + "ADTProjects.xml"
+    current_scene = bpy.context.scene.name
+    projects = bpy.data.scenes[current_scene].project_list
     
     
-    if NAME in os.listdir(scripts_path):
-        # Compare both lists
+    if "ADTProjects.xml" in os.listdir(scripts_path):
+        # Compare and update both lists
 
-        pass
+        tree = ET.parse(projects_file)
+        root = tree.getroot()
+        
+        # Update Blender's project list
+        for child in root:
+            name = child.attrib['name']
+            location = child.attrib['loc']
+            
+            if child.attrib['addon'] == "True":
+                is_addon = True
+            else:
+                is_addon = False
+                
+            print(name, location, str(is_addon))
+            
+            # Add to project list
+            projects.add()
+            bpy.data.scenes[currernt_scene].project_list_index = len(bpy.data.scenes[current_scene].project_list) - 1
+            index = bpy.data.scenes[currernt_scene].project_list_index
+            
+            bpy.data.scenes[current_scene].project_list[index].name = name
+            bpy.data.scenes[current_scene].project_list[index].location = location
+            
+            if is_addon:
+                bpy.data.scenes[current_scene].project_list[index].is_addon = True
+            else:
+                bpy.data.scenes[current_scene].project_list[index].is_addon = False
         
     else:
         # Create ADTProjects.xml
@@ -82,29 +101,34 @@ def update_xml(context):
 def update_file_list(context):
     if len(context.scene.project_list) > 0:
         project = context.scene.project_list[context.scene.project_list_index]
-        path = bpy.path.abspath(project.location)
         
-        # Make sure there is a location chosen first
-        if project.location != "":
+        # Make sure there is a valid location chosen first
+        if os.path.exists(project.location):
+            path = bpy.path.abspath(project.location)
+            
+            # For single-file addons
             if os.path.isfile(path):
                 file = os.path.basename(path)
                 if file.endswith('.py') and file not in project.project_files:
                     project.project_files.append(file)
 
+                # Remove the other file/s
                 for p in project.project_files:
                     if p != file:
-                        project.project_files.remove(item)
+                        project.project_files.remove(p)
+            
+            # Multi-file addons
             else:
                 # Make sure all files are in the project list
                 for file in os.listdir(path):
-                    if file.endswith('.py') or file.endswith('.txt') or file.endswith('.xml'):
+                    if file.endswith('.py'):
                         if os.path.isfile(path + file) and file not in project.project_files:
                             project.project_files.append(file)
                         
                 # Remove unneeded files from the project
-                for item in project.project_files:
-                    if item not in os.listdir(path):
-                        project.project_files.remove(item)
+                for p in project.project_files:
+                    if p not in os.listdir(path):
+                        project.project_files.remove(p)
                         
 def close_files(context, all):    
     sce = context.scene
@@ -113,7 +137,7 @@ def close_files(context, all):
     for area in bpy.context.screen.areas:
         if area.type == 'TEXT_EDITOR':
             if all:
-                if file.name in item.project_files:
+                for file in bpy.data.texts:
                     # Make the file the active file in the text editor
                     area.spaces[0].text = file
                     
@@ -128,24 +152,7 @@ def close_files(context, all):
                         
 #######################################################################################
 # UI
-#######################################################################################
-
-class AddonDevelopmentPreferences(AddonPreferences):
-    """ Holds the project path for the addon """
-    bl_idname = __name__
-    
-    projects_path = StringProperty(
-        name = "Default Project Folder",
-        description = "Define the default project folder",
-        default = "",
-        subtype = 'DIR_PATH'
-    )
-    
-    def draw(self, context):
-        layout = self.layout
-        #layout.label(text = "Define the default project folder for addons")
-        layout.prop(self, 'projects_path')
-            
+#######################################################################################            
 
 class AddonDevelopmentProjectPanel(Panel):
     """ Creates a panel in the text editor """
@@ -160,19 +167,15 @@ class AddonDevelopmentProjectPanel(Panel):
         
         # Make sure the files and xml are always updated
         update_file_list(context)
-        update_xml(context)
+        #update_xml(context)
         
         layout = self.layout
-        
-        addon_preferences = context.user_preferences.addons[__name__].preferences
-        
-        projects_path = bpy.path.abspath(addon_preferences.projects_path)
         
         row = layout.row()
         row.template_list("AddonProjectUIList", "", context.scene, "project_list", context.scene, "project_list_index", rows=5)
         
         
-        row = layout.row()
+        row = layout.row(align=True)
         row.operator('addon_dev_tool.new_addon')
         row.operator('addon_dev_tool.new_script')
         row.operator('addon_dev_tool.delete_project')
@@ -187,17 +190,17 @@ class AddonDevelopmentProjectPanel(Panel):
                 split = layout.split()
                 col = split.column()
                 col.operator('addon_dev_tool.open_files')
-                col = split.column()
+                
+                col = split.column(align=True)
                 col.operator('addon_dev_tool.close_files')
                 col.operator('addon_dev_tool.close_all_files')
                 
                 layout.separator()
                 
-                row = layout.row()
+                col = layout.column(align=True)
                 if item.is_addon:
-                    row.operator('addon_dev_tool.install_addon')
-                    row = layout.row()
-                    row.operator('addon_dev_tool.remove_addon')
+                    col.operator('addon_dev_tool.install_addon')
+                    col.operator('addon_dev_tool.remove_addon')
                 else:
                     row.operator('addon_dev_tool.run_script')
         
@@ -228,21 +231,12 @@ class AddonDevelopmentProjectSettingsPanel(Panel):
             item = project_list[list_index]
             
             layout.prop(item, 'name')
-            layout.prop(item, 'location')
+            
                 
-            if not item.location == "":                
-                path = bpy.path.abspath(item.location)
-                
-                if os.path.exists(path):
-                
-                    #Display files
-                    for file in item.project_files:
-                        layout.label(text=file)
-                    
-                else:
-                    layout.label(text="Invalid Path")
+            if not os.path.exists(item.location):              
+                layout.prop(item, 'location', icon='ERROR')
             else:
-                layout.label(text="Choose a location")
+                layout.prop(item, 'location')
      
         elif len(project_list) == 0:
             layout.label(text="No Projects")
@@ -393,7 +387,7 @@ class ADTInstallAddon(Operator):
                 
                 bpy.ops.wm.addon_install(overwrite=True, filepath=temp + os.sep + addon_name + ".zip")
                 
-                #bpy.ops.wm.addon_enable(module=addon_name)
+                bpy.ops.wm.addon_enable(module=addon_name)
                 print("NAME", addon_name)
                 
                 #remove the temporary zip file
@@ -418,14 +412,14 @@ class ADTRemoveAddon(Operator):
     def poll(self, context):
         project = context.scene.project_list[context.scene.project_list_index]
         path = project.location
-        addon_name = os.path.splitext(os.path.basename(path))[0]
+        addon_name = os.path.basename(path.rstrip(os.sep))
         
         return addon_name in bpy.context.user_preferences.addons.keys()
     
     def execute(self, context):
         project = context.scene.project_list[context.scene.project_list_index]
         path = project.location
-        addon_name = os.path.splitext(os.path.basename(path))[0]
+        addon_name = os.path.basename(path.rstrip(os.sep))
         
         bpy.ops.wm.addon_remove(module=addon_name)
         
@@ -433,13 +427,10 @@ class ADTRemoveAddon(Operator):
 
 def register():
     bpy.utils.register_class(AddonDevelopmentProjectPanel)
-    bpy.utils.register_class(AddonDevelopmentPreferences)
     bpy.utils.register_class(AddonProjectUIList)
     bpy.utils.register_class(Project)
     bpy.utils.register_class(AddAddon)
-    bpy.utils.register_class(ImportAddon)
     bpy.utils.register_class(AddScript)
-    bpy.utils.register_class(ImportScript)
     bpy.utils.register_class(RemoveItem)
     bpy.utils.register_class(AddonDevelopmentProjectSettingsPanel)
     bpy.utils.register_class(ADTOpenFiles)
@@ -454,13 +445,10 @@ def register():
     
 def unregister():
     bpy.utils.unregister_class(AddonDevelopmentProjectPanel)
-    bpy.utils.unregister_class(AddonDevelopmentPreferences)
     bpy.utils.unregister_class(AddonProjectUIList)
     bpy.utils.unregister_class(Project)
     bpy.utils.unregister_class(AddAddon)
-    bpy.utils.unregister_class(ImportAddon)
     bpy.utils.unregister_class(AddScript)
-    bpy.utils.unregister_class(ImportScript)
     bpy.utils.unregister_class(RemoveItem)
     bpy.utils.unregister_class(AddonDevelopmentProjectSettingsPanel)
     bpy.utils.unregister_class(ADTOpenFiles)
