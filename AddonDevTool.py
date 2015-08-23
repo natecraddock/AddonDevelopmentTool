@@ -16,7 +16,6 @@ from bpy.props import StringProperty, CollectionProperty, IntProperty, BoolPrope
 from bpy_extras.io_utils import ImportHelper, ExportHelper
 
 import os
-import shutil
 import zipfile
 import xml.etree.ElementTree as ET
 
@@ -27,12 +26,13 @@ import xml.etree.ElementTree as ET
 def xml_new_project(root, p):
     # Take the input project and then create the tree   
     list = root
-    
+
     if p.is_addon:
         project = ET.SubElement(list, 'project', name=p.name, loc=p.location, addon="True")
     else:
         project = ET.SubElement(list, 'project', name=p.name, loc=p.location, addon="False")
     
+    # Add each project file
     for file in p.project_files:
         ET.SubElement(project, 'file').text = file
     
@@ -42,7 +42,7 @@ def update_xml(context):
     # Make sure there is a ADTProjects.xml file
     # If not then create one
     # Then update the tree to include all current projects
-    #update the current projects to include all from the tree
+    # update the current projects to include all from the tree
     # Makes sure that no matter what the addon will have all the projects you have made
         
     scripts_path = bpy.utils.script_path_user()
@@ -71,8 +71,8 @@ def update_xml(context):
             
             # Add to project list
             projects.add()
-            bpy.data.scenes[currernt_scene].project_list_index = len(bpy.data.scenes[current_scene].project_list) - 1
-            index = bpy.data.scenes[currernt_scene].project_list_index
+            bpy.data.scenes[current_scene].project_list_index = len(bpy.data.scenes[current_scene].project_list) - 1
+            index = bpy.data.scenes[current_scene].project_list_index
             
             bpy.data.scenes[current_scene].project_list[index].name = name
             bpy.data.scenes[current_scene].project_list[index].location = location
@@ -99,6 +99,7 @@ def update_xml(context):
         
         
 def update_file_list(context):
+    # Update the list of files for the current project
     if len(context.scene.project_list) > 0:
         project = context.scene.project_list[context.scene.project_list_index]
         
@@ -149,6 +150,7 @@ def close_files(context, all):
                         area.spaces[0].text = file
                         
                         bpy.ops.text.unlink()
+            break
                         
 #######################################################################################
 # UI
@@ -177,32 +179,39 @@ class AddonDevelopmentProjectPanel(Panel):
         
         row = layout.row(align=True)
         row.operator('addon_dev_tool.new_addon')
-        row.operator('addon_dev_tool.new_script')
+        #row.operator('addon_dev_tool.new_script')
         row.operator('addon_dev_tool.delete_project')
         
-        layout.separator()
-        
+        # Only if a valid project is selected
         if list_index >= 0 and len(project_list) > 0:
             item = project_list[list_index]
             
             if not item.location == "" and os.path.exists(bpy.path.abspath(item.location)):
-                
-                split = layout.split()
-                col = split.column()
-                col.operator('addon_dev_tool.open_files')
-                
-                col = split.column(align=True)
-                col.operator('addon_dev_tool.close_files')
-                col.operator('addon_dev_tool.close_all_files')
-                
                 layout.separator()
                 
+                col = layout.column(align=True)                
+                row = col.row(align=True)
+                row.operator('addon_dev_tool.open_files')
+                row.operator('addon_dev_tool.close_files')
+                
+                row=col.row(align=True)
+                row.operator('addon_dev_tool.new_project_file')
+                row.operator('addon_dev_tool.close_all_files')
+                
+                layout.separator()
                 col = layout.column(align=True)
                 if item.is_addon:
                     col.operator('addon_dev_tool.install_addon')
                     col.operator('addon_dev_tool.remove_addon')
                 else:
                     row.operator('addon_dev_tool.run_script')
+                
+                # Info Box
+                if os.path.isdir(item.location):
+                    if "__init__.py" not in os.listdir(item.location):
+                        box = layout.box()
+                        box.label(text="Package Missing __init__.py file")
+                
         
         
     
@@ -222,7 +231,6 @@ class AddonDevelopmentProjectSettingsPanel(Panel):
     
     def draw(self, context):
         layout = self.layout
-        file_types = ['.py', '.txt', '.xml']
         
         project_list = context.scene.project_list
         list_index = context.scene.project_list_index
@@ -328,6 +336,19 @@ class ADTOpenFiles(Operator):
     bl_idname = 'addon_dev_tool.open_files'
     bl_description = "Open files from current project in the text editor"
     
+    @classmethod
+    def poll(self, context):
+        sce = context.scene
+        item = sce.project_list[sce.project_list_index]
+        
+        unopened = False
+
+        for file in item.project_files:
+            if file not in bpy.data.texts:
+                unopened = True
+                
+        return unopened
+    
     def execute(self, context):
         project = bpy.context.scene.project_list[bpy.context.scene.project_list_index]
         path = bpy.path.abspath(project.location)
@@ -339,6 +360,40 @@ class ADTOpenFiles(Operator):
             if file not in bpy.data.texts:
                 bpy.ops.text.open(filepath=path + file)
 
+        return {'FINISHED'}
+    
+    
+class ADTNewProjectFile(Operator, ExportHelper):
+    bl_label = "New File"
+    bl_idname = 'addon_dev_tool.new_project_file'
+    bl_description = "Create a new file for the project and open it in the editor"
+    
+    filename_ext = ".py"
+    
+    # Set the filepath to the project location
+    def invoke(self, context, event):
+        location = context.scene.project_list[context.scene.project_list_index].location
+        
+        if self.filepath == "":
+            self.filepath = location
+        
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+    
+    def execute(self, context):        
+        # Create the file
+        print("Creating", self.filepath)
+        f = open(self.filepath, 'w', encoding='utf-8')
+        f.close()
+        
+        # Open the file in the text editor
+        text = bpy.data.texts.load(self.filepath)
+
+        for area in bpy.context.screen.areas:
+            if area.type == 'TEXT_EDITOR':
+                area.spaces[0].text = text
+                break
+
         return {'FINISHED'}     
 
 
@@ -346,6 +401,20 @@ class ADTCloseFiles(Operator):
     bl_label = "Close Files"
     bl_idname = 'addon_dev_tool.close_files'
     bl_description = "Close files from current project in the text editor"
+    
+    @classmethod
+    def poll(self, context):
+        sce = context.scene
+        item = sce.project_list[sce.project_list_index]
+        
+        files_open = False
+
+        for file in bpy.data.texts:
+            if file.name in item.project_files:
+                files_open = True
+                
+        return files_open
+                
     
     def execute(self, context):
         close_files(context, False)
@@ -356,6 +425,10 @@ class ADTCloseAllFiles(Operator):
     bl_label = "Close All Files"
     bl_idname = 'addon_dev_tool.close_all_files'
     bl_description = "Close all files in the text editor"
+    
+    @classmethod
+    def poll(self, context):
+        return len(bpy.data.texts) > 0
     
     def execute(self, context):
         close_files(context, True)
@@ -438,6 +511,7 @@ def register():
     bpy.utils.register_class(ADTCloseAllFiles)
     bpy.utils.register_class(ADTInstallAddon)
     bpy.utils.register_class(ADTRemoveAddon)
+    bpy.utils.register_class(ADTNewProjectFile)
     
     bpy.types.Scene.project_list = CollectionProperty(type=Project)
     bpy.types.Scene.project_list_index = IntProperty(name="Index for project_list", default=0)
@@ -456,6 +530,7 @@ def unregister():
     bpy.utils.unregister_class(ADTCloseAllFiles)
     bpy.utils.unregister_class(ADTInstallAddon)
     bpy.utils.unregister_class(ADTRemoveAddon)
+    bpy.utils.unregister_class(ADTNewProjectFile)
     
     del bpy.types.Scene.project_list
     del bpy.types.Scene.project_list_index
