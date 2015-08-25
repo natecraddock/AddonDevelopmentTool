@@ -3,4 +3,4 @@
 
 
 ## Installation
-### [Download the addon](https://raw.githubusercontent.com/MrSprite/AddonDevelopmentTool/master/AddonDevTool.py)
+### [Download the addon](https://raw.githubusercontent.com/natecraddock/AddonDevelopmentTool/master/AddonDevTool.py)

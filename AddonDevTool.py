@@ -112,6 +112,7 @@ def update_file_list(context):
                 file = os.path.basename(path)
                 if file.endswith('.py') and file not in project.project_files:
                     project.project_files.append(file)
+                    print(file)
 
                 # Remove the other file/s
                 for p in project.project_files:
@@ -197,6 +198,9 @@ class AddonDevelopmentProjectPanel(Panel):
                 row=col.row(align=True)
                 row.operator('addon_dev_tool.new_project_file')
                 row.operator('addon_dev_tool.close_all_files')
+                
+                row = col.row(align=True)
+                row.operator('addon_dev_tool.refresh_files', icon='FILE_REFRESH')
                 
                 layout.separator()
                 col = layout.column(align=True)
@@ -358,7 +362,10 @@ class ADTOpenFiles(Operator):
         
         for file in project.project_files:
             if file not in bpy.data.texts:
-                bpy.ops.text.open(filepath=path + file)
+                if os.path.isdir(path):
+                    bpy.ops.text.open(filepath=path + file)
+                elif os.path.isfile(path):
+                    bpy.ops.text.open(filepath=path)
 
         return {'FINISHED'}
     
@@ -436,6 +443,33 @@ class ADTCloseAllFiles(Operator):
         return {'FINISHED'}
     
     
+class ADTRefreshFiles(Operator):
+    bl_label = "Refresh Files"
+    bl_idname = 'addon_dev_tool.refresh_files'
+    bl_description = "Refresh all open project files in the text editor"
+    
+    @classmethod
+    def poll(self, context):
+        return True
+    
+    def execute(self, context):
+        sce = context.scene
+        item = sce.project_list[sce.project_list_index]
+        
+        # Find all modified files from the project and update them
+        for area in bpy.context.screen.areas:
+            if area.type == 'TEXT_EDITOR':
+                for file in bpy.data.texts:
+                    if file.name in item.project_files:
+                        # Make the file the active file in the text editor
+                        area.spaces[0].text = file
+                        
+                        if file.is_modified:
+                            bpy.ops.text.reload()
+        
+        return {'FINISHED'}
+    
+    
 class ADTInstallAddon(Operator):
     bl_label = "Install Addon"
     bl_idname = 'addon_dev_tool.install_addon'
@@ -485,7 +519,10 @@ class ADTRemoveAddon(Operator):
     def poll(self, context):
         project = context.scene.project_list[context.scene.project_list_index]
         path = project.location
-        addon_name = os.path.basename(path.rstrip(os.sep))
+        if os.path.isdir(path):
+            addon_name = os.path.basename(path.rstrip(os.sep))
+        elif os.path.isfile(path):
+            addon_name = os.path.basename(path)
         
         return addon_name in bpy.context.user_preferences.addons.keys()
     
@@ -509,6 +546,7 @@ def register():
     bpy.utils.register_class(ADTOpenFiles)
     bpy.utils.register_class(ADTCloseFiles)
     bpy.utils.register_class(ADTCloseAllFiles)
+    bpy.utils.register_class(ADTRefreshFiles)
     bpy.utils.register_class(ADTInstallAddon)
     bpy.utils.register_class(ADTRemoveAddon)
     bpy.utils.register_class(ADTNewProjectFile)
@@ -528,6 +566,7 @@ def unregister():
     bpy.utils.unregister_class(ADTOpenFiles)
     bpy.utils.unregister_class(ADTCloseFiles)
     bpy.utils.unregister_class(ADTCloseAllFiles)
+    bpy.utils.unregister_class(ADTRefreshFiles)
     bpy.utils.unregister_class(ADTInstallAddon)
     bpy.utils.unregister_class(ADTRemoveAddon)
     bpy.utils.unregister_class(ADTNewProjectFile)
