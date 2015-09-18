@@ -14,89 +14,55 @@ import bpy
 from bpy.types import Panel, AddonPreferences, PropertyGroup, UIList, Operator
 from bpy.props import StringProperty, CollectionProperty, IntProperty, BoolProperty
 from bpy_extras.io_utils import ImportHelper, ExportHelper
+from bpy.app.handlers import persistent
 
 import os
 import zipfile
-import xml.etree.ElementTree as ET
+import json
 
 #######################################################################################
 # FUNCTIONS
 #######################################################################################
 
-def xml_new_project(root, p):
-    # Take the input project and then create the tree   
-    list = root
-
-    if p.is_addon:
-        project = ET.SubElement(list, 'project', name=p.name, loc=p.location, addon="True")
-    else:
-        project = ET.SubElement(list, 'project', name=p.name, loc=p.location, addon="False")
+@persistent
+def get_projects(scene):
+    # Import projects from JSON file
+    projects_file = bpy.utils.script_path_user() + os.sep + "ADTProjects.json"
+    project_list = bpy.context.scene.project_list
+    names = [p.name for p in project_list]
     
-    # Add each project file
-    for file in p.project_files:
-        ET.SubElement(project, 'file').text = file
+    with open(projects_file) as readfile:
+        projects = json.load(readfile)
     
-    return list
+    print("Imported", projects)
     
-def update_xml(context):
-    # Make sure there is a ADTProjects.xml file
-    # If not then create one
-    # Then update the tree to include all current projects
-    # update the current projects to include all from the tree
-    # Makes sure that no matter what the addon will have all the projects you have made
-        
-    scripts_path = bpy.utils.script_path_user()
-    projects_file = scripts_path + os.sep + "ADTProjects.xml"
-    current_scene = bpy.context.scene.name
-    projects = bpy.data.scenes[current_scene].project_list
+    for p in projects:
+        if p[0] not in names:
+            bpy.context.scene.project_list.add()
+            bpy.context.scene.project_list_index = len(bpy.context.scene.project_list) - 1
+            bpy.context.scene.project_list[bpy.context.scene.project_list_index].name = p[0]
+            bpy.context.scene.project_list[bpy.context.scene.project_list_index].location = p[1]
+            bpy.context.scene.project_list[bpy.context.scene.project_list_index].is_addon = True
     
+def save_projects(scene):
+    # Save project list to a JSON file
+    projects_file = bpy.utils.script_path_user() + os.sep + "ADTProjects.json"
+    project_list = bpy.context.scene.project_list
     
-    if "ADTProjects.xml" in os.listdir(scripts_path):
-        # Compare and update both lists
-
-        tree = ET.parse(projects_file)
-        root = tree.getroot()
+    projects = []
+    
+    for p in project_list:
+        project = []
+        project.append(p.name)
+        project.append(p.location)
+        project.append(p.is_addon)
         
-        # Update Blender's project list
-        for child in root:
-            name = child.attrib['name']
-            location = child.attrib['loc']
-            
-            if child.attrib['addon'] == "True":
-                is_addon = True
-            else:
-                is_addon = False
-                
-            print(name, location, str(is_addon))
-            
-            # Add to project list
-            projects.add()
-            bpy.data.scenes[current_scene].project_list_index = len(bpy.data.scenes[current_scene].project_list) - 1
-            index = bpy.data.scenes[current_scene].project_list_index
-            
-            bpy.data.scenes[current_scene].project_list[index].name = name
-            bpy.data.scenes[current_scene].project_list[index].location = location
-            
-            if is_addon:
-                bpy.data.scenes[current_scene].project_list[index].is_addon = True
-            else:
-                bpy.data.scenes[current_scene].project_list[index].is_addon = False
-        
-    else:
-        # Create ADTProjects.xml
-        # Add all current projects to the tree
-        
-        # Write the projects to the tree
-        root = ET.Element('project_list')
-
-        for project in projects:
-            # We don't like unfinished projects definitions here :)
-            if not project.location == "":
-                root = xml_new_project(root, project)
-
-        tree = ET.ElementTree(root)
-        tree.write(projects_file)
-        
+        projects.append(project)
+    
+    print("Exported", projects)
+    
+    with open(projects_file, 'w') as savefile:
+        json.dump(projects, savefile)        
         
 def update_file_list(context):
     # Update the list of files for the current project
@@ -167,10 +133,6 @@ class AddonDevelopmentProjectPanel(Panel):
     def draw(self, context):
         project_list = context.scene.project_list
         list_index = context.scene.project_list_index
-        
-        # Make sure the files and xml are always updated
-        update_file_list(context)
-        #update_xml(context)
         
         layout = self.layout
         
@@ -294,7 +256,7 @@ class AddAddon(Operator):
         context.scene.project_list.add()
         context.scene.project_list_index = len(context.scene.project_list) - 1
         
-        context.scene.project_list[context.scene.project_list_index].is_addon = True
+        context.scene.project_list[context.scene.project_list_index].is_addon = True        
         
         return {'FINISHED'}
     
@@ -344,6 +306,8 @@ class ADTOpenFiles(Operator):
     def poll(self, context):
         sce = context.scene
         item = sce.project_list[sce.project_list_index]
+        
+        update_file_list(context)
         
         unopened = False
 
@@ -536,40 +500,19 @@ class ADTRemoveAddon(Operator):
         return {'FINISHED'}
 
 def register():
-    bpy.utils.register_class(AddonDevelopmentProjectPanel)
-    bpy.utils.register_class(AddonProjectUIList)
-    bpy.utils.register_class(Project)
-    bpy.utils.register_class(AddAddon)
-    bpy.utils.register_class(AddScript)
-    bpy.utils.register_class(RemoveItem)
-    bpy.utils.register_class(AddonDevelopmentProjectSettingsPanel)
-    bpy.utils.register_class(ADTOpenFiles)
-    bpy.utils.register_class(ADTCloseFiles)
-    bpy.utils.register_class(ADTCloseAllFiles)
-    bpy.utils.register_class(ADTRefreshFiles)
-    bpy.utils.register_class(ADTInstallAddon)
-    bpy.utils.register_class(ADTRemoveAddon)
-    bpy.utils.register_class(ADTNewProjectFile)
+    bpy.utils.register_module(__name__)
     
     bpy.types.Scene.project_list = CollectionProperty(type=Project)
     bpy.types.Scene.project_list_index = IntProperty(name="Index for project_list", default=0)
     
+    bpy.app.handlers.load_post.append(get_projects)
+    bpy.app.handlers.save_post.append(save_projects)
     
 def unregister():
-    bpy.utils.unregister_class(AddonDevelopmentProjectPanel)
-    bpy.utils.unregister_class(AddonProjectUIList)
-    bpy.utils.unregister_class(Project)
-    bpy.utils.unregister_class(AddAddon)
-    bpy.utils.unregister_class(AddScript)
-    bpy.utils.unregister_class(RemoveItem)
-    bpy.utils.unregister_class(AddonDevelopmentProjectSettingsPanel)
-    bpy.utils.unregister_class(ADTOpenFiles)
-    bpy.utils.unregister_class(ADTCloseFiles)
-    bpy.utils.unregister_class(ADTCloseAllFiles)
-    bpy.utils.unregister_class(ADTRefreshFiles)
-    bpy.utils.unregister_class(ADTInstallAddon)
-    bpy.utils.unregister_class(ADTRemoveAddon)
-    bpy.utils.unregister_class(ADTNewProjectFile)
+    bpy.utils.unregister_module(__name__)
     
     del bpy.types.Scene.project_list
     del bpy.types.Scene.project_list_index
+    
+    bpy.app.handlers.load_post.remove(get_projects)
+    bpy.app.handlers.save_post.remove(save_projects)
