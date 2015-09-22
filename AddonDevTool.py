@@ -32,8 +32,6 @@ def get_projects(scene):
     project_list = bpy.context.scene.project_list
     names = [p.name for p in project_list]
 
-    print(names)
-
     with open(projects_file) as readfile:
         projects = json.load(readfile)
 
@@ -88,8 +86,7 @@ def get_files(context):
 
 def close_files(context, all):
     # Closes files
-    # All will toggle between all files, or the files in the project 
-    sce = context.scene
+    # All will toggle between all files, or the files in the project
 
     for area in bpy.context.screen.areas:
         if area.type == 'TEXT_EDITOR':
@@ -109,6 +106,55 @@ def close_files(context, all):
                         bpy.ops.text.unlink()
             break
 
+def is_project_valid(context):
+    # Checks if addon has a bl_info
+    # If a package, check for __init__.py
+    # Returns a list
+    
+
+    
+    info = []
+    mainfile = ""
+    
+    project = context.scene.project_list[context.scene.project_list_index]
+    path = bpy.path.abspath(project.location)
+    
+    # Determine whether it is a multifile addon and get mainfile name
+    if os.path.isdir(path):
+        if '__init__.py' not in os.listdir(path):
+            info.append("missing __init__.py")
+            
+        else:
+            mainfile = path + os.sep + '__init__.py'
+            found = False
+            
+            with open(mainfile) as f:
+                for line in iter(f):
+                    l = line.replace(' ', '')
+                    if l.startswith('bl_info'):
+                        #print("BL INFO FOUND", line)
+                        found = True
+                        break
+            
+            if not found:
+                info.append('missing bl_info')
+    else:
+        mainfile = path
+    
+        found = False
+        with open(mainfile) as f:
+            for line in iter(f):
+                l = line.replace(' ', '')
+                if l.startswith('bl_info'):
+                    #print("BL INFO FOUND", line)
+                    found = True
+                    break
+                
+        if not found:
+            info.append('missing bl_info')
+                
+    return info
+    
 
 #######################################################################################
 # UI
@@ -164,10 +210,12 @@ class AddonDevelopmentProjectPanel(Panel):
                     row.operator('addon_dev_tool.run_script')
 
                 # Info Box
-                if os.path.isdir(item.location):
-                    if "__init__.py" not in os.listdir(item.location):
-                        box = layout.box()
-                        box.label(text="Package Missing __init__.py file")
+                info = is_project_valid(context)
+                if len(info) > 0:
+                    box = layout.box()
+                    for i in info:
+                        box.label(text=i)
+                
 
     def draw_header(self, context):
         """ Just for fun """
@@ -434,6 +482,12 @@ class ADTInstallAddon(Operator):
     bl_label = "Install Addon"
     bl_idname = 'addon_dev_tool.install_addon'
     bl_description = "Install the addon"
+    
+    @classmethod
+    def poll(self, context):
+        i = is_project_valid(context)
+        if len(i) is 0:
+            return True
 
     def execute(self, context):
         project = context.scene.project_list[context.scene.project_list_index]
