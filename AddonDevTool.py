@@ -132,7 +132,6 @@ def is_project_valid(context):
                 for line in iter(f):
                     l = line.replace(' ', '')
                     if l.startswith('bl_info'):
-                        #print("BL INFO FOUND", line)
                         found = True
                         break
             
@@ -140,13 +139,15 @@ def is_project_valid(context):
                 info.append('missing bl_info')
     else:
         mainfile = path
+        
+        if os.path.basename(path) == "__init__.py":
+            info.append("__init__.py is only for packages")
     
         found = False
         with open(mainfile) as f:
             for line in iter(f):
                 l = line.replace(' ', '')
                 if l.startswith('bl_info'):
-                    #print("BL INFO FOUND", line)
                     found = True
                     break
                 
@@ -517,6 +518,8 @@ class ADTInstallAddon(Operator):
         # Otherwise, get the name of the file
         elif os.path.isfile(path):
             addon_name = os.path.basename(path)
+            
+            print(addon_name)
 
             bpy.ops.wm.addon_install(overwrite=True, filepath=path)
             bpy.ops.wm.addon_enable(module=os.path.splitext(addon_name)[0])
@@ -534,19 +537,30 @@ class ADTRemoveAddon(Operator):
         project = context.scene.project_list[context.scene.project_list_index]
         path = project.location
         addon_name = ""
+        
         if os.path.isdir(path):
             addon_name = os.path.basename(path.rstrip(os.sep))
         elif os.path.isfile(path):
             addon_name = os.path.basename(path)
+            
+        addon_name = os.path.splitext(addon_name)[0]
 
         return addon_name in bpy.context.user_preferences.addons.keys()
 
     def execute(self, context):
         project = context.scene.project_list[context.scene.project_list_index]
         path = project.location
-        addon_name = os.path.basename(path.rstrip(os.sep))
+        addon_name = ""
+        
+        if os.path.isdir(path):
+            addon_name = os.path.basename(path.rstrip(os.sep))
+        elif os.path.isfile(path):
+            addon_name = os.path.basename(path)
+            
+        addon_name = os.path.splitext(addon_name)[0]
 
         bpy.ops.wm.addon_remove(module=addon_name)
+        print(addon_name)
 
         return {'FINISHED'}
 
