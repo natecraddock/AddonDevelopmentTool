@@ -26,7 +26,7 @@ import json
 #######################################################################################
 
 @persistent
-def get_projects(scene):
+def get_projects(dummy):
     # Import projects from JSON file
     projects_file = bpy.utils.script_path_user() + os.sep + "ADTProjects.json"
     project_list = bpy.context.scene.project_list
@@ -44,7 +44,8 @@ def get_projects(scene):
             bpy.context.scene.project_list[bpy.context.scene.project_list_index].is_addon = True
 
 
-def save_projects():
+@persistent
+def save_projects(dummy):
     # Save project list to a JSON file
     projects_file = bpy.utils.script_path_user() + os.sep + "ADTProjects.json"
     project_list = bpy.context.scene.project_list
@@ -572,6 +573,7 @@ def register():
     bpy.types.Scene.project_list_index = IntProperty(name="Index for project_list", default=0)
 
     bpy.app.handlers.load_post.append(get_projects)
+    bpy.app.handlers.scene_update_pre.append(save_projects)
 
 
 def unregister():
@@ -581,3 +583,4 @@ def unregister():
     del bpy.types.Scene.project_list_index
 
     bpy.app.handlers.load_post.remove(get_projects)
+    bpy.app.handlers.scene_update_pre.remove(save_projects)
