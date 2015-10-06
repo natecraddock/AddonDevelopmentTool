@@ -57,8 +57,6 @@ def save_projects(dummy):
 
         projects.append(project)
 
-    print("Exported", projects)
-
     with open(projects_file, 'w') as savefile:
         json.dump(projects, savefile)
 
@@ -111,7 +109,6 @@ def is_project_valid(context):
     # Checks if addon has a bl_info
     # If a package, check for __init__.py
     # Returns a list
-    
 
     
     info = []
@@ -333,8 +330,6 @@ class RemoveItem(Operator):
         if index > 0:
             context.scene.project_list_index = index - 1
 
-        save_projects()
-
         return {'FINISHED'}
 
 
@@ -495,6 +490,7 @@ class ADTInstallAddon(Operator):
         project = context.scene.project_list[context.scene.project_list_index]
         path = project.location
         temp = bpy.utils.script_path_user()
+        project_files = get_files(context)
 
         # If it is a multi-file addon get the folder
         if os.path.isdir(path):
@@ -503,15 +499,16 @@ class ADTInstallAddon(Operator):
 
                 zip = zipfile.ZipFile(temp + os.sep + addon_name + ".zip", 'w')
 
-                for file in project.project_files:
+                for file in project_files:
                     zip.write(path + file, addon_name + os.sep + file)
 
                 zip.close()
+                
+                print(addon_name)
 
                 bpy.ops.wm.addon_install(overwrite=True, filepath=temp + os.sep + addon_name + ".zip")
 
                 bpy.ops.wm.addon_enable(module=addon_name)
-                print("NAME", addon_name)
 
                 # remove the temporary zip file
                 os.remove(temp + os.sep + addon_name + ".zip")
@@ -519,8 +516,6 @@ class ADTInstallAddon(Operator):
         # Otherwise, get the name of the file
         elif os.path.isfile(path):
             addon_name = os.path.basename(path)
-            
-            print(addon_name)
 
             bpy.ops.wm.addon_install(overwrite=True, filepath=path)
             bpy.ops.wm.addon_enable(module=os.path.splitext(addon_name)[0])
