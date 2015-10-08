@@ -49,16 +49,18 @@ def save_projects(dummy):
     # Save project list to a JSON file
     projects_file = bpy.utils.script_path_user() + os.sep + "ADTProjects.json"
     project_list = bpy.context.scene.project_list
+    
+    # Don't save if there aren't any addons
+    if len(bpy.context.scene.project_list) is not 0:
+        projects = []
 
-    projects = []
+        for p in project_list:
+            project = [p.name, p.location, p.is_addon]
 
-    for p in project_list:
-        project = [p.name, p.location, p.is_addon]
+            projects.append(project)
 
-        projects.append(project)
-
-    with open(projects_file, 'w') as savefile:
-        json.dump(projects, savefile)
+        with open(projects_file, 'w') as savefile:
+            json.dump(projects, savefile)
 
 
 def get_files(context):
@@ -568,6 +570,7 @@ def register():
     bpy.types.Scene.project_list_index = IntProperty(name="Index for project_list", default=0)
 
     bpy.app.handlers.load_post.append(get_projects)
+    
     bpy.app.handlers.scene_update_pre.append(save_projects)
 
 
