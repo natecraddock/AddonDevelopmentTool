@@ -272,9 +272,9 @@ class AddonProjectUIList(UIList):
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
 
             if item.is_addon:
-                layout.label(item.name, icon=addon_icon)
+                layout.prop(item, 'name', emboss=False, icon=addon_icon)
             else:
-                layout.label(item.name, icon=script_icon)
+                layout.prop(item, 'name', emboss=False, icon=script_icon)
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
