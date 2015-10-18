@@ -186,6 +186,11 @@ class AddonDevelopmentProjectPanel(Panel):
         # Only if a valid project is selected
         if list_index >= 0 and len(project_list) > 0:
             item = project_list[list_index]
+            
+            if not os.path.exists(item.location):
+                layout.prop(item, 'location', icon='ERROR')
+            else:
+                layout.prop(item, 'location')
 
             if not item.location == "" and os.path.exists(bpy.path.abspath(item.location)):
                 layout.separator()
@@ -224,33 +229,6 @@ class AddonDevelopmentProjectPanel(Panel):
         # layout.label(icon='FILE_TEXT')
 
 
-class AddonDevelopmentProjectSettingsPanel(Panel):
-    """ Settings for the currently opened project """
-    bl_label = "Project Settings"
-    bl_idname = "TEXT_PT_addon_dev_project_settings"
-    bl_space_type = 'TEXT_EDITOR'
-    bl_region_type = 'UI'
-
-    def draw(self, context):
-        layout = self.layout
-
-        project_list = context.scene.project_list
-        list_index = context.scene.project_list_index
-
-        if list_index >= 0 and len(project_list) > 0:
-            item = project_list[list_index]
-
-            layout.prop(item, 'name')
-
-            if not os.path.exists(item.location):
-                layout.prop(item, 'location', icon='ERROR')
-            else:
-                layout.prop(item, 'location')
-
-        elif len(project_list) == 0:
-            layout.label(text="No Projects")
-
-
 class Project(PropertyGroup):
     """ Holds location, name, etc of each project """
 
@@ -279,33 +257,32 @@ class AddonProjectUIList(UIList):
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
             layout.label("", icon=addon_icon)
-
-
-class AddAddon(Operator):
+            
+            
+#######################################################################################
+# OPERATORS
+#######################################################################################
+class ADTNewAddon(Operator):
     bl_label = "New Addon"
     bl_idname = "addon_dev_tool.new_addon"
-    bl_description = "Create a new blank addon"
+    bl_description = "Create a new addon"
 
     def execute(self, context):
         context.scene.project_list.add()
         context.scene.project_list_index = len(context.scene.project_list) - 1
-
         context.scene.project_list[context.scene.project_list_index].is_addon = True
 
         return {'FINISHED'}
 
 
-class AddScript(Operator):
+class ADTNewScript(Operator):
     bl_label = "New Script"
     bl_idname = "addon_dev_tool.new_script"
-    bl_description = "Create a new blank script"
+    bl_description = "Create a new script"
 
     def execute(self, context):
         context.scene.project_list.add()
         context.scene.project_list_index = len(context.scene.project_list) - 1
-
-        # Don't allow duplicate names
-        # context.scene.project_list[context.scene.project_list_index].name =
         context.scene.project_list[context.scene.project_list_index].is_addon = False
 
         save_projects()
@@ -313,10 +290,10 @@ class AddScript(Operator):
         return {'FINISHED'}
 
 
-class RemoveItem(Operator):
+class ADTDeleteProject(Operator):
     bl_label = "Delete Project"
     bl_idname = "addon_dev_tool.delete_project"
-    bl_description = "Delete the current project (will not remove from computer)"
+    bl_description = "Remove project from list (Will not delete files)"
 
     @classmethod
     def poll(self, context):
@@ -336,7 +313,7 @@ class RemoveItem(Operator):
 
 
 class ADTOpenFiles(Operator):
-    bl_label = "Open Files"
+    bl_label = "Open Project Files"
     bl_idname = 'addon_dev_tool.open_files'
     bl_description = "Open files from current project in the text editor"
 
@@ -370,7 +347,7 @@ class ADTOpenFiles(Operator):
 
 
 class ADTNewProjectFile(Operator, ExportHelper):
-    bl_label = "New File"
+    bl_label = "New Project File"
     bl_idname = 'addon_dev_tool.new_project_file'
     bl_description = "Create a new file for the project and open it in the editor"
 
@@ -404,7 +381,7 @@ class ADTNewProjectFile(Operator, ExportHelper):
 
 
 class ADTCloseFiles(Operator):
-    bl_label = "Close Files"
+    bl_label = "Close Project Files"
     bl_idname = 'addon_dev_tool.close_files'
     bl_description = "Close files from current project in the text editor"
 
@@ -429,7 +406,7 @@ class ADTCloseFiles(Operator):
 class ADTCloseAllFiles(Operator):
     bl_label = "Close All Files"
     bl_idname = 'addon_dev_tool.close_all_files'
-    bl_description = "Close all files in the text editor"
+    bl_description = "Closes all files in the text editor"
 
     @classmethod
     def poll(self, context):
@@ -480,7 +457,7 @@ class ADTRefreshFiles(Operator):
 class ADTInstallAddon(Operator):
     bl_label = "Install Addon"
     bl_idname = 'addon_dev_tool.install_addon'
-    bl_description = "Install the addon"
+    bl_description = "Install and enable the addon"
     
     @classmethod
     def poll(self, context):
@@ -521,6 +498,8 @@ class ADTInstallAddon(Operator):
 
             bpy.ops.wm.addon_install(overwrite=True, filepath=path)
             bpy.ops.wm.addon_enable(module=os.path.splitext(addon_name)[0])
+            
+        self.report({'INFO'}, 'Successfuly installed addon', project.name)
 
         return {'FINISHED'}
 
@@ -570,7 +549,6 @@ def register():
     bpy.types.Scene.project_list_index = IntProperty(name="Index for project_list", default=0)
 
     bpy.app.handlers.load_post.append(get_projects)
-    
     bpy.app.handlers.scene_update_pre.append(save_projects)
 
 
