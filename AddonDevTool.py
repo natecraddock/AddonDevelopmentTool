@@ -498,9 +498,8 @@ class ADTInstallAddon(Operator):
 
             bpy.ops.wm.addon_install(overwrite=True, filepath=path)
             bpy.ops.wm.addon_enable(module=os.path.splitext(addon_name)[0])
-            
-        self.report({'INFO'}, 'Successfuly installed addon', project.name)
-
+        
+        self.report({'INFO'}, "Installed addon {0}".format(project.name))
         return {'FINISHED'}
 
 
