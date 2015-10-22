@@ -180,7 +180,7 @@ class AddonDevelopmentProjectPanel(Panel):
 
         row = layout.row(align=True)
         row.operator('addon_dev_tool.new_addon')
-        # row.operator('addon_dev_tool.new_script')
+        #row.operator('addon_dev_tool.new_script')
         row.operator('addon_dev_tool.delete_project')
 
         # Only if a valid project is selected
@@ -214,6 +214,9 @@ class AddonDevelopmentProjectPanel(Panel):
                     col.operator('addon_dev_tool.remove_addon')
                 else:
                     row.operator('addon_dev_tool.run_script')
+                    
+                row = layout.row()
+                row.operator('addon_dev_tool.export')
 
                 # Info Box
                 info = is_project_valid(context)
@@ -284,8 +287,6 @@ class ADTNewScript(Operator):
         context.scene.project_list.add()
         context.scene.project_list_index = len(context.scene.project_list) - 1
         context.scene.project_list[context.scene.project_list_index].is_addon = False
-
-        save_projects()
 
         return {'FINISHED'}
 
@@ -423,20 +424,6 @@ class ADTRefreshFiles(Operator):
     bl_idname = 'addon_dev_tool.refresh_files'
     bl_description = "Refresh all open project files in the text editor"
 
-#    @classmethod
-#    def poll(self, context):
-#        files = get_files(context)
-#
-#        for area in bpy.context.screen.areas:
-#            if area.type == 'TEXT_EDITOR':
-#                for file in bpy.data.texts:
-#                    if file.name in files:
-#                        # Make the file the active file in the text editor
-#                        area.spaces[0].text = file
-#
-#                        if file.is_modified:
-#                            return True
-
     def execute(self, context):
         # Find all modified files from the project and update them
         files = get_files(context)
@@ -450,6 +437,8 @@ class ADTRefreshFiles(Operator):
 
                         if file.is_modified:
                             bpy.ops.text.reload()
+                            
+        self.report({'INFO'}, "Loaded external changes")
 
         return {'FINISHED'}
 
@@ -537,6 +526,8 @@ class ADTRemoveAddon(Operator):
 
         bpy.ops.wm.addon_remove(module=addon_name)
         print(addon_name)
+        
+        self.report({'INFO'}, "Uninstalled addon {0}".format(addon_name))
 
         return {'FINISHED'}
 
