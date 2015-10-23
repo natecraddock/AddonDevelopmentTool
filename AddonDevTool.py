@@ -155,6 +155,15 @@ def is_project_valid(context):
             info.append('missing bl_info')
                 
     return info
+
+def zip_project(location, files, path, name):
+    # Saves specified folder to specified location as a zip file
+    zip = zipfile.ZipFile(location, 'w')
+
+    for file in files:
+        zip.write(path + file, name + os.sep + file)
+
+    zip.close()
     
 
 #######################################################################################
@@ -472,13 +481,8 @@ class ADTInstallAddon(Operator):
         if os.path.isdir(path):
             if path.endswith(os.sep):
                 addon_name = os.path.basename(path.rstrip(os.sep))
-
-                zip = zipfile.ZipFile(temp + os.sep + addon_name + ".zip", 'w')
-
-                for file in project_files:
-                    zip.write(path + file, addon_name + os.sep + file)
-
-                zip.close()
+                
+                zip_project(temp + os.sep + addon_name + ".zip", project_files, path, addon_name)
                 
                 print(addon_name)
 
@@ -538,6 +542,42 @@ class ADTRemoveAddon(Operator):
         self.report({'INFO'}, "Uninstalled addon {0}".format(addon_name))
 
         return {'FINISHED'}
+    
+
+class ADTExport(Operator, ExportHelper):
+    bl_label = "Export For Distribution"
+    bl_idname = 'addon_dev_tool.export'
+    bl_description = "Export the file"
+    
+    filename_ext = ".zip"
+
+    def execute(self, context):
+        project = context.scene.project_list[context.scene.project_list_index]
+        path = project.location
+        temp = bpy.utils.script_path_user()
+        project_files = get_files(context)
+
+        # If it is a multi-file addon get the folder
+        if os.path.isdir(path):
+            if path.endswith(os.sep):
+                addon_name = os.path.basename(path.rstrip(os.sep))
+                
+                zip_project(self.filepath, project_files, path, addon_name)
+
+        # Otherwise, get the name of the file
+        elif os.path.isfile(path):
+            addon_name = os.path.basename(path)
+            
+            zip = zipfile.ZipFile(self.filepath, 'w')
+
+            for file in project_files:
+                zip.write(path, file)
+
+            zip.close()
+
+            
+        self.report({'INFO'}, "Exported addon {0}".format(project.name))
+        return {'FINISHED'}  
 
 
 def register():
