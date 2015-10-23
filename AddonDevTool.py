@@ -2,8 +2,8 @@ bl_info = {
     "name": "Addon Development Tool",
     "description": "Removes redundancy and repetition in the creating and testing of Blender addons",
     "author": "Nathan Craddock",
-    "version": (0, 1),
-    "blender": (2, 75, 0),
+    "version": (1, 0),
+    "blender": (2, 76, 0),
     "location": "Properties shelf of the text editor",
     "warning": "",
     "support": "COMMUNITY",
@@ -353,6 +353,14 @@ class ADTNewProjectFile(Operator, ExportHelper):
     bl_description = "Create a new file for the project and open it in the editor"
 
     filename_ext = ".py"
+    
+#    @classmethod
+#    def poll(self, context):
+#        # Make sure it is a multi file addon
+#        location = context.scene.project_list[context.scene.project_list_index].location
+#        
+#        if os.path.isdir(location):
+#            return True
 
     # Set the filepath to the project location
     def invoke(self, context, event):
