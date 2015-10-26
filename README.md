@@ -1,6 +1,7 @@
 # Addon Development Tool
 *A Blender addon to aid in the development of addons by providing quick access to repetitive operations*
 
+![Example GIF](https://github.com/natecraddock/AddonDevelopmentTool/blob/master/resources/ADTv1.0.gif)
 
 ## Installation
 ### [Download the addon](https://raw.githubusercontent.com/natecraddock/AddonDevelopmentTool/master/AddonDevTool.py)
