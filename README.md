@@ -1,11 +1,8 @@
 # Addon Development Tool
 *A Blender addon to aid in the development of addons by providing quick access to repetitive operations*
 
-![Example GIF](https://raw.githubusercontent.com/natecraddock/AddonDevelopmentTool/master/resources/ADTv1.0.gif)
-
-## Installation
 ### [Download the addon](https://raw.githubusercontent.com/natecraddock/AddonDevelopmentTool/master/AddonDevTool.py)
-
+![Example GIF](https://raw.githubusercontent.com/natecraddock/AddonDevelopmentTool/master/resources/ADTv1.0.gif)
 
 ## Use
 The Addon Development Tool is located on the toolshelf in the text editor. 
