@@ -93,7 +93,9 @@ def get_files(context):
 
     # Multi-file addons
     else:
-        for file in os.listdir(path):
+        for root, dirs, files in os.walk(path, topdown=False):
+            for name in files:
+                print(os.path.join(root, name))
             if file.endswith('.py'):
                 if os.path.isfile(path + file):
                     files.append(file)
