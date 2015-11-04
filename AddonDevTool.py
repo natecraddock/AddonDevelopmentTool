@@ -104,6 +104,8 @@ def get_file_names(file_paths):
     file_names = []
     for file in file_paths:
         file_names.append(os.path.basename(file))
+        
+    return file_names
 
 def close_files(context, all):
     # Closes files
