@@ -95,13 +95,15 @@ def get_files(context):
     else:
         for root, dirs, files in os.walk(path, topdown=False):
             for name in files:
-                print(os.path.join(root, name))
-            if file.endswith('.py'):
-                if os.path.isfile(path + file):
-                    files.append(file)
+                if file.endswith('.py'):
+                    files.append(os.path.join(root, name).lstrip(path))
 
     return files
 
+def get_file_names(file_paths):
+    file_names = []
+    for file in file_paths:
+        file_names.append(os.path.basename(file))
 
 def close_files(context, all):
     # Closes files
@@ -116,7 +118,7 @@ def close_files(context, all):
 
                     bpy.ops.text.unlink()
             else:
-                files = get_files(context)
+                files = get_file_names(get_files(context))
                 for file in bpy.data.texts:
                     if file.name in files:
                         # Make the file the active file in the text editor
