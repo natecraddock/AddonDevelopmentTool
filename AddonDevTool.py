@@ -95,7 +95,7 @@ def get_files(context):
     else:
         for root, dirs, files in os.walk(path, topdown=False):
             for name in files:
-                if file.endswith('.py'):
+                if name.endswith('.py'):
                     files.append(os.path.join(root, name).lstrip(path))
 
     return files
