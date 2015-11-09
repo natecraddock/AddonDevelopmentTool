@@ -83,22 +83,24 @@ def get_files(context):
     # Return a list with of the files from the current project
     project = context.scene.project_list[context.scene.project_list_index]
     path = bpy.path.abspath(project.location)
+    
+    project_files = []
 
-    files = []
-    # For single-file addons
+    # Single-file addons
     if os.path.isfile(path):
         file = os.path.basename(path)
         if file.endswith('.py'):
-            files.append(file)
+            project_files.append(file)
 
     # Multi-file addons
     else:
         for root, dirs, files in os.walk(path, topdown=False):
             for name in files:
                 if name.endswith('.py'):
-                    files.append(os.path.join(root, name).lstrip(path))
+                    project_files.append(os.path.join(root, name).replace(path, ""))
+                    print(os.path.join(root, name).replace(path, ""))
 
-    return files
+    return project_files
 
 def get_file_names(file_paths):
     file_names = []
@@ -465,7 +467,7 @@ class ADTRefreshFiles(Operator):
 
     def execute(self, context):
         # Find all modified files from the project and update them
-        files = get_files(context)
+        files = get_file_names(get_files(context))
 
         for area in bpy.context.screen.areas:
             if area.type == 'TEXT_EDITOR':
