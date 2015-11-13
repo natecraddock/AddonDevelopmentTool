@@ -83,10 +83,9 @@ def get_files(context):
     # Return a list with of the files from the current project
     project = context.scene.project_list[context.scene.project_list_index]
     path = bpy.path.abspath(project.location)
-    
-    project_files = []
 
-    # Single-file addons
+    project_files = []
+    # For single-file addons
     if os.path.isfile(path):
         file = os.path.basename(path)
         if file.endswith('.py'):
@@ -98,7 +97,6 @@ def get_files(context):
             for name in files:
                 if name.endswith('.py'):
                     project_files.append(os.path.join(root, name).replace(path, ""))
-                    print(os.path.join(root, name).replace(path, ""))
 
     return project_files
 
@@ -353,12 +351,12 @@ class ADTOpenFiles(Operator):
 
     @classmethod
     def poll(self, context):
-        files = get_files(context)
+        file_names = get_file_names(get_files(context))
 
         unopened = False
 
-        for file in files:
-            if file not in bpy.data.texts:
+        for name in file_names:
+            if name not in bpy.data.texts:
                 unopened = True
 
         return unopened
@@ -467,12 +465,12 @@ class ADTRefreshFiles(Operator):
 
     def execute(self, context):
         # Find all modified files from the project and update them
-        files = get_file_names(get_files(context))
+        file_names = get_file_names(get_files(context))
 
         for area in bpy.context.screen.areas:
             if area.type == 'TEXT_EDITOR':
                 for file in bpy.data.texts:
-                    if file.name in files:
+                    if file.name in file_names:
                         # Make the file the active file in the text editor
                         area.spaces[0].text = file
 
