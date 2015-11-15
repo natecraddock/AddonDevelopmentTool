@@ -79,7 +79,7 @@ def save_projects(dummy):
             json.dump(projects, savefile)
 
 
-def get_files(context):
+def get_files(context, ending=""):
     # Return a list with of the files from the current project
     project = context.scene.project_list[context.scene.project_list_index]
     path = bpy.path.abspath(project.location)
@@ -88,14 +88,14 @@ def get_files(context):
     # For single-file addons
     if os.path.isfile(path):
         file = os.path.basename(path)
-        if file.endswith('.py'):
+        if file.endswith(ending):
             project_files.append(file)
 
     # Multi-file addons
     else:
         for root, dirs, files in os.walk(path, topdown=False):
             for name in files:
-                if name.endswith('.py'):
+                if name.endswith(ending):
                     project_files.append(os.path.join(root, name).replace(path, ""))
 
     return project_files
@@ -120,7 +120,7 @@ def close_files(context, all):
 
                     bpy.ops.text.unlink()
             else:
-                files = get_file_names(get_files(context))
+                files = get_file_names(get_files(context, '.py'))
                 for file in bpy.data.texts:
                     if file.name in files:
                         # Make the file the active file in the text editor
@@ -133,8 +133,6 @@ def is_project_valid(context):
     # Checks if addon has a bl_info
     # If a package, check for __init__.py
     # Returns a list
-
-    
     info = []
     mainfile = ""
     
@@ -176,7 +174,8 @@ def is_project_valid(context):
         if not found:
             info.append('missing bl_info')
                 
-    return info
+    #return info
+    return []
 
 def zip_project(location, files, path, name):
     # Saves specified folder to specified location as a zip file
@@ -300,6 +299,7 @@ class ADTNewAddon(Operator):
     bl_label = "New Addon"
     bl_idname = "addon_dev_tool.new_addon"
     bl_description = "Create a new addon"
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         context.scene.project_list.add()
@@ -313,6 +313,7 @@ class ADTNewScript(Operator):
     bl_label = "New Script"
     bl_idname = "addon_dev_tool.new_script"
     bl_description = "Create a new script"
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         context.scene.project_list.add()
@@ -326,6 +327,7 @@ class ADTDeleteProject(Operator):
     bl_label = "Delete Project"
     bl_idname = "addon_dev_tool.delete_project"
     bl_description = "Remove project from list (Will not delete files)"
+    bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(self, context):
@@ -348,10 +350,11 @@ class ADTOpenFiles(Operator):
     bl_label = "Open Project Files"
     bl_idname = 'addon_dev_tool.open_files'
     bl_description = "Open files from current project in the text editor"
+    bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(self, context):
-        file_names = get_file_names(get_files(context))
+        file_names = get_file_names(get_files(context, '.py'))
 
         unopened = False
 
@@ -366,7 +369,7 @@ class ADTOpenFiles(Operator):
         path = bpy.path.abspath(project.location)
 
         # Open files in the text editor from the current project
-        files = get_files(context)
+        files = get_files(context, '.py')
 
         for file in files:
             if file not in bpy.data.texts:
@@ -382,6 +385,7 @@ class ADTNewProjectFile(Operator, ExportHelper):
     bl_label = "New Project File"
     bl_idname = 'addon_dev_tool.new_project_file'
     bl_description = "Create a new file for the project and open it in the editor"
+    bl_options = {'REGISTER', 'UNDO'}
 
     filename_ext = ".py"
     
@@ -424,11 +428,12 @@ class ADTCloseFiles(Operator):
     bl_label = "Close Project Files"
     bl_idname = 'addon_dev_tool.close_files'
     bl_description = "Close files from current project in the text editor"
+    bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(self, context):
         sce = context.scene
-        files = get_files(context)
+        files = get_files(context, 'py')
         files_open = False
 
         for file in bpy.data.texts:
@@ -447,6 +452,7 @@ class ADTCloseAllFiles(Operator):
     bl_label = "Close All Files"
     bl_idname = 'addon_dev_tool.close_all_files'
     bl_description = "Closes all files in the text editor"
+    bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(self, context):
@@ -462,10 +468,11 @@ class ADTRefreshFiles(Operator):
     bl_label = "Refresh Files"
     bl_idname = 'addon_dev_tool.refresh_files'
     bl_description = "Refresh all open project files in the text editor"
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         # Find all modified files from the project and update them
-        file_names = get_file_names(get_files(context))
+        file_names = get_file_names(get_files(context, '.py'))
 
         for area in bpy.context.screen.areas:
             if area.type == 'TEXT_EDITOR':
@@ -486,6 +493,7 @@ class ADTInstallAddon(Operator):
     bl_label = "Install Addon"
     bl_idname = 'addon_dev_tool.install_addon'
     bl_description = "Install and enable the addon"
+    bl_options = {'REGISTER', 'UNDO'}
     
     @classmethod
     def poll(self, context):
@@ -530,6 +538,7 @@ class ADTRemoveAddon(Operator):
     bl_label = "Uninstall Addon"
     bl_idname = 'addon_dev_tool.remove_addon'
     bl_description = "Remove the addon"
+    bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(self, context):
@@ -570,6 +579,7 @@ class ADTExport(Operator, ExportHelper):
     bl_label = "Export For Distribution"
     bl_idname = 'addon_dev_tool.export'
     bl_description = "Export the file"
+    bl_options = {'REGISTER', 'UNDO'}
     
     filename_ext = ".zip"
 
